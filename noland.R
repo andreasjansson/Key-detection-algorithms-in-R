@@ -1,3 +1,5 @@
+# NOT CURRENTLY IN A WORKING STATE
+
 ## Key detection algorithms in R
 ## Copyright (C) 2011 <andreas@jansson.me.uk>
 
@@ -16,16 +18,128 @@
 
 
 ## Based on Noland & Sandler: Key Estimation Using a Hidden Markov Model
+## The thing that sets this method apart is the use of transitions between
+## two consecutive chords as HMM observations, almost like in a second
+## order Markov model.
 
+
+# TODO: write comment about not figuring out where to put aug chords
+
+
+get.hmm <- function() {
+  return(initHMM(get.state.names(), get.symbol.names(), get.start.probs(),
+                 get.trans.probs(), get.emission.probs()))
+}
+
+## indexed from 0
+get.state.names <- function() {
+  return(0:23)
+}
+
+## 1:12 == major chords, 13:24 == minor chords, 25:36 == dim chords, 37 = no chord
+## indexed from 0
+get.symbol.names <- function() {
+  return(0:36)
+}
+
+get.start.probs <- function() {
+  return(rep(1 / 24, 24))
+}
+
+## Return a matrix of correlations between keys, the first 12 columns being
+## correlations from the major keys and the last 12 from minor keys.
+get.trans.probs <- function() {
+  probs <- matrix(0, 24, 24)
+  for(i in 1:24) {
+    probs[,i] <- shift(krumhansl.key.profile.correlations[, ifelse(i <= 12, 1, 2)],
+                       i - ifelse(i <= 12, 1, 13))
+  }
+  return(probs)
+}
+
+get.emission.probs <- function() {
+  # 37 chords, maj min dim + no chord
+  ntrans <- 37 ^ 2
+  probs <- matrix(0, nrow = ntrans, ncol = 24)
+
+  for(key in 0:23) {
+    for(transition in 0:(ntrans - 1)) {
+      chords <- get.chords.in.transition(transition)
+      chord1index <- get.diatonic.index(chords[1], key)
+      chord2index <- get.diatonic.index(chords[2], key)
+
+      # if any of the members of the transition are non-diatonic,
+      # set the emission probability to 1
+      if(length(c(chord1index, chord2index)) < 2) {
+        prob <- 1
+      }
+
+      # the probability of staying on the same diatonic chord is taken from
+      # Krumhansl's harmonic hierarchy ratings, and boosted by 2
+      else if(chord1index == chord2index) {
+        
+      }
+
+      # the probability of transitioning from one diatonic chord to another
+      # diatonic chord is taken from Krumhansl's chord transition ratings
+      else {
+        prob <- krumhansl.chord.transition.ratings[chord1index, chord2index]        
+      }
+
+      probs[transition + 1, key + 1] <- prob
+    }
+  }
+  return(probs)
+}
+
+## Return the diatonic index of chord in key, or integer(0) if chord
+## is not diatonic.
+get.diatonic.index <- function(chord, key) {
+
+  # normalise minor keys
+  if(key > 12)
+    key <- (key - 7) %% 12
+
+  # major chords
+  if(chord < 12) {
+    chord <- (chord - key) %% 12
+    return(switch(as.character(chord),
+                  '0' = 1,
+                  '5' = 4,
+                  '7' = 5,
+                  integer(0)))
+  }
+
+  # minor chords
+  if(chord < 24) {
+    chord <- (chord - 12 - key) %% 12
+    return(switch(as.character(chord),
+                  '2' = 2,
+                  '4' = 3,
+                  '9' = 6,
+                  integer(0)))
+  }
+
+  # diminished chords
+  if(chord < 36) {
+    chord <- (chord - 24 - key) %% 12
+    return(switch(as.character(chord),
+                  '11' = 7,
+                  integer(0)))
+  }
+
+  return(integer(0));
+}
 
 ## Read a file in Chris Harte's format.
 ## Returns a vector of of chord ids.
+# TODO: fix this to match : syntax in get.chord.id
 read.chord.file <- function(filename) {
   data <- read.table(filename, sep = ' ')
   chords <- data[,3]
 
-  # only interested in minor and major chords
-  # minor == '-', major == ''
+  # only interested in minor, major and dim chords
+  # TODO
   chords <- gsub(':min.*$', '-', chords)
   chords <- gsub(':.*$', '', chords)
   chords <- gsub('/.*$', '', chords)
@@ -33,24 +147,30 @@ read.chord.file <- function(filename) {
   return(get.chord.id(chords))
 }
 
-## Returns a 2-column matrix of transitions,
-## col 1 == from, col 2 == to
-get.transitions <- function(chords) {
-  return(cbind(chords[1:(length(chords) - 1)], chords[2:length(chords)]))
+get.transition.index <- function(chord1, chord2) {
+  return(chord1 * 37 + chord2)
+}
+
+get.chords.in.transition <- function(transition) {
+  chord1 <- floor(transition / 37)
+  chord2 <- transition %% 37
+  return(c(chord1, chord2))
 }
 
 ## Returns an integer from a chord name.
 ## (vectorised)
 get.chord.id <- function(name) {
   chord.names <-
-    c('C','C#','Db','D','D#','Eb','E','E#','Fb','F','F#','Gb','G','G#','Ab','A','A#','Bb','B','B#','Cb',
-      'C-','C#-','Db-','D-','D#-','Eb-','E-','E#-','Fb-','F-','F#-',
-      'Gb-','G-','G#-','Ab-','A-','A#-','Bb-','B-','B#-','Cb-',
+    c('C:maj','C#:maj','Db:maj','D:maj','D#:maj','Eb:maj','E:maj','E#:maj','Fb:maj','F:maj','F#:maj',
+      'Gb:maj','G:maj','G#:maj','Ab:maj','A:maj','A#:maj','Bb:maj','B:maj','B#:maj','Cb:maj',
+      'C:min','C#:min','Db:min','D:min','D#:min','Eb:min','E:min','E#:min','Fb:min','F:min','F#:min',
+      'Gb:min','G:min','G#:min','Ab:min','A:min','A#:min','Bb:min','B:min','B#:min','Cb:min',
+      'C:dim','C#:dim','Db:dim','D:dim','D#:dim','Eb:dim','E:dim','E#:dim','Fb:dim','F:dim','F#:dim',
+      'Gb:dim','G:dim','G#:dim','Ab:dim','A:dim','A#:dim','Bb:dim','B:dim','B#:dim','Cb:dim',
       'N')
   chord.ids <-
-    c(0, 1, 1, 2, 3, 3, 4, 5, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 0, 11, 
-      12, 13, 13, 14, 15, 15, 16, 17, 16, 17, 18, 18, 19, 20, 20, 21, 22, 22, 23, 12, 23,
-      24)
+    c(rep(c(0, 1, 1, 2, 3, 3, 4, 5, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 0, 11), 3) +
+      rep(0:3 * 12, each = 21), 4 * 12)
 
   names(chord.ids) <- chord.names
   return(chord.ids[name])
@@ -60,29 +180,29 @@ krumhansl.key.profile.correlations <-
   t(matrix(c(
              # Cmaj  Cmin
               1.000,  0.511, # Cmaj 
-             −0.500, −0.158, # C#maj
-              0.040, −0.402, # Dmaj 
-             −0.105,  0.651, # D#maj
-             −0.185, −0.508, # Emaj 
+             -0.500, -0.158, # C#maj
+              0.040, -0.402, # Dmaj 
+             -0.105,  0.651, # D#maj
+             -0.185, -0.508, # Emaj 
               0.591,  0.241, # Fmaj 
-             −0.683, −0.369, # F#maj
+             -0.683, -0.369, # F#maj
               0.591,  0.215, # Gmaj 
-             −0.185,  0.536, # G#maj
-             −0.105, −0.654, # Amaj 
+             -0.185,  0.536, # G#maj
+             -0.105, -0.654, # Amaj 
               0.040,  0.237, # A#maj
-             −0.500, −0.298, # Bmaj 
+             -0.500, -0.298, # Bmaj 
               0.511,  1.000, # Cmin 
-             −0.298, −0.394, # C#min
-              0.237, −0.160, # Dmin 
-             −0.654,  0.055, # D#min
-              0.536, −0.003, # Emin 
+             -0.298, -0.394, # C#min
+              0.237, -0.160, # Dmin 
+             -0.654,  0.055, # D#min
+              0.536, -0.003, # Emin 
               0.215,  0.339, # Fmin 
-             −0.369, −0.673, # F#min
+             -0.369, -0.673, # F#min
               0.241,  0.339, # Gmin 
-             −0.508, −0.003, # G#min
+             -0.508, -0.003, # G#min
               0.651,  0.055, # Amin 
-             −0.402, −0.160, # A#min
-             −0.158, −0.394  # Bmin 
+             -0.402, -0.160, # A#min
+             -0.158, -0.394  # Bmin 
              ), nrow = 2))
 
 krumhansl.chord.transition.ratings <-
@@ -99,41 +219,41 @@ krumhansl.chord.transition.ratings <-
 
 krumhansl.harmonic.hierarchy.ratings <-
   t(matrix(c(
-             # Cmaj  Cmin
-             6.66, 5.30, # Cmaj 
-             4.71, 4.11, # C#maj
-             4.60, 3.83, # Dmaj 
-             4.31, 4.14, # D#maj
-             4.64, 3.99, # Emaj 
-             5.59, 4.41, # Fmaj 
-             4.36, 3.92, # F#maj
-             5.33, 4.38, # Gmaj 
-             5.01, 4.45, # G#maj
-             4.64, 3.69, # Amaj 
-             4.73, 4.22, # A#maj
-             4.67, 3.85, # Bmaj 
-             3.75, 5.90, # Cmin 
-             2.59, 3.08, # C#min
-             3.12, 3.25, # Dmin 
-             2.18, 3.50, # D#min
-             2.76, 3.33, # Emin 
-             3.19, 4.60, # Fmin 
-             2.13, 2.98, # F#min
-             2.68, 3.48, # Gmin 
-             2.61, 3.53, # G#min
-             3.62, 3.78, # Amin 
-             2.56, 3.13, # A#min
-             2.76, 3.14, # Bmin 
-             3.27, 3.93, # Cdim 
-             2.70, 2.84, # C#dim
-             2.59, 3.43, # Ddim 
-             2.79, 3.42, # D#dim
-             2.64, 3.51, # Edim 
-             2.54, 3.41, # Fdim 
-             3.25, 3.91, # F#dim
-             2.58, 3.16, # Gdim 
-             2.36, 3.17, # G#dim
-             3.35, 4.10, # Adim 
-             2.38, 3.10, # A#dim
-             2.64, 3.18  # Bdim 
+             # C:maj  C:min
+             6.66, 5.30, # C:maj 
+             4.71, 4.11, # C:#maj
+             4.60, 3.83, # D:maj 
+             4.31, 4.14, # D:#maj
+             4.64, 3.99, # E:maj 
+             5.59, 4.41, # F:maj 
+             4.36, 3.92, # F:#maj
+             5.33, 4.38, # G:maj 
+             5.01, 4.45, # G:#maj
+             4.64, 3.69, # A:maj 
+             4.73, 4.22, # A:#maj
+             4.67, 3.85, # B:maj 
+             3.75, 5.90, # C:min 
+             2.59, 3.08, # C:#min
+             3.12, 3.25, # D:min 
+             2.18, 3.50, # D:#min
+             2.76, 3.33, # E:min 
+             3.19, 4.60, # F:min 
+             2.13, 2.98, # F:#min
+             2.68, 3.48, # G:min 
+             2.61, 3.53, # G:#min
+             3.62, 3.78, # A:min 
+             2.56, 3.13, # A:#min
+             2.76, 3.14, # B:min 
+             3.27, 3.93, # C:dim 
+             2.70, 2.84, # C:#dim
+             2.59, 3.43, # D:dim 
+             2.79, 3.42, # D:#dim
+             2.64, 3.51, # E:dim 
+             2.54, 3.41, # F:dim 
+             3.25, 3.91, # F:#dim
+             2.58, 3.16, # G:dim 
+             2.36, 3.17, # G:#dim
+             3.35, 4.10, # A:dim 
+             2.38, 3.10, # A:#dim
+             2.64, 3.18  # B:dim 
              ), nrow = 2))
