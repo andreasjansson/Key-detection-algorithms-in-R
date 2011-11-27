@@ -77,7 +77,13 @@ get.emission.probs <- function() {
       # the probability of staying on the same diatonic chord is taken from
       # Krumhansl's harmonic hierarchy ratings, and boosted by 2
       else if(chord1index == chord2index) {
-        
+        row <- c(1, 3 + 12, 5 + 12, 6, 8, 10 + 12, 12 + 24)[chord1index]
+        if(key < 12)
+          prob <- krumhansl.harmonic.hierarchy.ratings[row, 1]
+        else
+          # TODO UPNEXT: doesnt work
+          # checkEquals(4.14, krumhansl.harmonic.hierarchy.ratings[c(1, 3 + 12, 5 + 12, 6, 8, 10 + 12, 12 + 24)[1], 2])
+          prob <- krumhansl.harmonic.hierarchy.ratings[row, 2]
       }
 
       # the probability of transitioning from one diatonic chord to another

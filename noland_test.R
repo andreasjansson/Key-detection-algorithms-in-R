@@ -1,3 +1,4 @@
+# TODO: test minor keys
 test.get.diatonic.index <- function() {
   checkEquals(1, get.diatonic.index(0, 0))
   checkEquals(2, get.diatonic.index(14, 0))
