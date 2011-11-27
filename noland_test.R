@@ -1,4 +1,5 @@
-# TODO: test minor keys
+source('noland.R')
+
 test.get.diatonic.index <- function() {
   checkEquals(1, get.diatonic.index(0, 0))
   checkEquals(2, get.diatonic.index(14, 0))
@@ -31,4 +32,68 @@ test.get.diatonic.index <- function() {
   checkEquals(5, get.diatonic.index(11, 4))
   checkEquals(6, get.diatonic.index(13, 4))
   checkEquals(7, get.diatonic.index(27, 4))
+
+  checkEquals(1, get.diatonic.index(0, 21))
+  checkEquals(2, get.diatonic.index(14, 21))
+  checkEquals(3, get.diatonic.index(16, 21))
+  checkEquals(4, get.diatonic.index(5, 21))
+  checkEquals(5, get.diatonic.index(7, 21))
+  checkEquals(6, get.diatonic.index(21, 21))
+  checkEquals(7, get.diatonic.index(35, 21))
+
+  checkEquals(1, get.diatonic.index(1, 22))
+  checkEquals(2, get.diatonic.index(15, 22))
+  checkEquals(3, get.diatonic.index(17, 22))
+  checkEquals(4, get.diatonic.index(6, 22))
+  checkEquals(5, get.diatonic.index(8, 22))
+  checkEquals(6, get.diatonic.index(22, 22))
+  checkEquals(7, get.diatonic.index(24, 22))
+
+  checkEquals(1, get.diatonic.index(2, 23))
+  checkEquals(2, get.diatonic.index(16, 23))
+  checkEquals(3, get.diatonic.index(18, 23))
+  checkEquals(4, get.diatonic.index(7, 23))
+  checkEquals(5, get.diatonic.index(9, 23))
+  checkEquals(6, get.diatonic.index(23, 23))
+  checkEquals(7, get.diatonic.index(25, 23))
+
+  checkEquals(1, get.diatonic.index(4, 13))
+  checkEquals(2, get.diatonic.index(18, 13))
+  checkEquals(3, get.diatonic.index(20, 13))
+  checkEquals(4, get.diatonic.index(9, 13))
+  checkEquals(5, get.diatonic.index(11, 13))
+  checkEquals(6, get.diatonic.index(13, 13))
+  checkEquals(7, get.diatonic.index(27, 13))
+}
+
+# a few spotchecks
+test.get.emission.probs <- function() {
+  probs <<- get.emission.probs()
+  f <- get.transition.index
+
+  checkEquals(8.66, probs[f( 0,  0), 1])
+  checkEquals(5.51, probs[f( 2,  0), 8])
+  checkEquals(1.00, probs[f( 2,  0), 1])
+  checkEquals(1.00, probs[f( 2,  0), 2])
+  checkEquals(4.72, probs[f(21, 16), 1])
+  checkEquals(4.97, probs[f(21, 16), 8])
+  checkEquals(4.79, probs[f( 9, 16), 3])
+  checkEquals(4.64, probs[f(35, 35), 1])
+  checkEquals(5.85, probs[f(35,  0), 1])
+  checkEquals(5.12, probs[f(21, 21), 8])
+  checkEquals(5.26, probs[f( 7, 16), 8])
+  checkEquals(5.85, probs[f(30,  7), 8])
+
+  checkEquals(6.14, probs[f( 0,  0), 22])
+  checkEquals(5.51, probs[f( 2,  0), 17])
+  checkEquals(1.00, probs[f( 2,  0), 22])
+  checkEquals(1.00, probs[f( 2,  0), 23])
+  checkEquals(4.72, probs[f(21, 16), 22])
+  checkEquals(4.97, probs[f(21, 16), 17])
+  checkEquals(4.79, probs[f( 9, 16), 24])
+  checkEquals(5.43, probs[f(35, 35), 22])
+  checkEquals(5.85, probs[f(35,  0), 22])
+  checkEquals(6.60, probs[f(21, 21), 17])
+  checkEquals(5.26, probs[f( 7, 16), 17])
+  checkEquals(5.85, probs[f(30,  7), 17])
 }

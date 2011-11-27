@@ -28,7 +28,7 @@
 
 get.hmm <- function() {
   return(initHMM(get.state.names(), get.symbol.names(), get.start.probs(),
-                 get.trans.probs(), get.emission.probs()))
+                 get.normalised.trans.probs(), get.normalised.emission.probs()))
 }
 
 ## indexed from 0
@@ -77,13 +77,14 @@ get.emission.probs <- function() {
       # the probability of staying on the same diatonic chord is taken from
       # Krumhansl's harmonic hierarchy ratings, and boosted by 2
       else if(chord1index == chord2index) {
-        row <- c(1, 3 + 12, 5 + 12, 6, 8, 10 + 12, 12 + 24)[chord1index]
-        if(key < 12)
-          prob <- krumhansl.harmonic.hierarchy.ratings[row, 1]
-        else
-          # TODO UPNEXT: doesnt work
-          # checkEquals(4.14, krumhansl.harmonic.hierarchy.ratings[c(1, 3 + 12, 5 + 12, 6, 8, 10 + 12, 12 + 24)[1], 2])
-          prob <- krumhansl.harmonic.hierarchy.ratings[row, 2]
+        if(key < 12) {
+          row <- c(1, 3 + 12, 5 + 12, 6, 8, 10 + 12, 12 + 24)[chord1index]
+          prob <- krumhansl.harmonic.hierarchy.ratings[row, 1] + 2
+        }
+        else {
+          row <- c(4, 6 + 12, 8 + 12, 9, 11, 1 + 12, 3 + 24)[chord1index]
+          prob <- krumhansl.harmonic.hierarchy.ratings[row, 2] + 2
+        }
       }
 
       # the probability of transitioning from one diatonic chord to another
@@ -104,7 +105,7 @@ get.diatonic.index <- function(chord, key) {
 
   # normalise minor keys
   if(key > 12)
-    key <- (key - 7) %% 12
+    key <- (key - 9) %% 12
 
   # major chords
   if(chord < 12) {
@@ -134,7 +135,7 @@ get.diatonic.index <- function(chord, key) {
                   integer(0)))
   }
 
-  return(integer(0));
+  return(integer(0))
 }
 
 ## Read a file in Chris Harte's format.
@@ -154,7 +155,7 @@ read.chord.file <- function(filename) {
 }
 
 get.transition.index <- function(chord1, chord2) {
-  return(chord1 * 37 + chord2)
+  return(chord1 * 37 + chord2 + 1)
 }
 
 get.chords.in.transition <- function(transition) {
