@@ -20,7 +20,8 @@
 ## Based on Noland & Sandler: Key Estimation Using a Hidden Markov Model
 ## The thing that sets this method apart is the use of transitions between
 ## two consecutive chords as HMM observations, almost like in a second
-## order Markov model.
+## order Markov model. And obviously the use of Krumhansl's perceptual
+## tests.
 
 
 # TODO: write comment about not figuring out where to put aug chords
@@ -46,13 +47,23 @@ get.start.probs <- function() {
   return(rep(1 / 24, 24))
 }
 
+get.normalised.trans.probs <- function() {
+  probs <- get.trans.probs()
+  # normalise
+  probs <- t(t(probs) / colSums(probs))
+  return(probs)
+}
+
 ## Return a matrix of correlations between keys, the first 12 columns being
 ## correlations from the major keys and the last 12 from minor keys.
 get.trans.probs <- function() {
+
+  # TODO UPNEXT: make test pass
+
   probs <- matrix(0, 24, 24)
   for(i in 1:24) {
     probs[,i] <- shift(krumhansl.key.profile.correlations[, ifelse(i <= 12, 1, 2)],
-                       i - ifelse(i <= 12, 1, 13))
+                       i - ifelse(i <= 12, 1, 13)) + 1
   }
   return(probs)
 }

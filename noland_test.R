@@ -97,3 +97,18 @@ test.get.emission.probs <- function() {
   checkEquals(5.26, probs[f( 7, 16), 17])
   checkEquals(5.85, probs[f(30,  7), 17])
 }
+
+test.get.trans.probs <- function() {
+  probs <<- get.trans.probs()
+
+  checkEquals(2.000, probs[ 1,  1])
+  checkEquals(1.511, probs[ 1, 13])
+  checkEquals(1.511, probs[13,  1])
+  checkEquals(1.040, probs[ 3,  1])
+  checkEquals(1.591, probs[ 8,  1])
+  checkEquals(1.511, probs[ 8, 20])
+  checkEquals(1.511, probs[20,  8])
+  checkEquals(0.402, probs[13,  3])
+  checkEquals(0.402, probs[20, 10])
+  checkEquals(0.160, probs[20, 22])
+}
