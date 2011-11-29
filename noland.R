@@ -48,7 +48,7 @@ get.start.probs <- function() {
 }
 
 get.normalised.trans.probs <- function() {
-  probs <- get.trans.probs()
+  probs <- get.trans.probs() + 1
   # normalise
   probs <- t(t(probs) / colSums(probs))
   return(probs)
@@ -60,10 +60,18 @@ get.trans.probs <- function() {
 
   # TODO UPNEXT: make test pass
 
+  cors <- krumhansl.key.profile.correlations
   probs <- matrix(0, 24, 24)
   for(i in 1:24) {
-    probs[,i] <- shift(krumhansl.key.profile.correlations[, ifelse(i <= 12, 1, 2)],
-                       i - ifelse(i <= 12, 1, 13)) + 1
+
+    if(i <= 12) {
+      probs[,i] <- c(shift(cors[1:12, 1], i - 1),
+                     shift(cors[13:24, 1], i - 1))
+    }
+    else {
+      probs[,i] <- c(shift(cors[1:12, 2], i - 13),
+                     shift(cors[13:24, 2], i - 13))
+    }
   }
   return(probs)
 }
@@ -225,7 +233,7 @@ krumhansl.key.profile.correlations <-
 
 krumhansl.chord.transition.ratings <-
   t(matrix(c(
-           # I    ii    iii   IV     V     vi    vii
+           # I     ii    iii   IV    V     vi    vii
              0,    5.10, 4.78, 5.91, 5.94, 5.26, 4.57, # I
              5.69, 0,    4.00, 4.76, 6.10, 4.97, 5.41, # ii
              5.38, 4.47, 0,    4.63, 5.03, 4.60, 4.47, # iii
