@@ -1,5 +1,3 @@
-# NOT CURRENTLY IN A WORKING STATE
-
 ## Key detection algorithms in R
 ## Copyright (C) 2011 <andreas@jansson.me.uk>
 
@@ -26,10 +24,18 @@
 
 # TODO: write comment about not figuring out where to put aug chords
 
+library(HMM)
+library(magic)
 
 get.hmm <- function() {
   return(initHMM(get.state.names(), get.symbol.names(), get.start.probs(),
                  get.normalised.trans.probs(), get.normalised.emission.probs()))
+}
+
+get.transitions <- function(chords) {
+  chords.table <- cbind(chords[1:(length(chords) - 1)], chords[2:length(chords)])
+  transitions <- apply(chords.table, 1, function(x) { get.transition.symbol(x[1], x[2]) })
+  return(transitions)
 }
 
 ## indexed from 0
@@ -168,26 +174,32 @@ get.diatonic.index <- function(chord, key) {
 ## Returns a vector of of chord ids.
 # TODO: fix this to match : syntax in get.chord.id
 read.chord.file <- function(filename) {
-  data <- read.table(filename, sep = ' ')
+  data <- read.table(filename, sep = ' ', comment.char = '')
   chords <- data[,3]
-
-  # only interested in minor, major and dim chords
-  # TODO
-  chords <- gsub(':min.*$', '-', chords)
-  chords <- gsub(':.*$', '', chords)
-  chords <- gsub('/.*$', '', chords)
-
+  chords <- unlist(lapply(chords, parse.chord))
   return(get.chord.id(chords))
 }
 
-get.transition.index <- function(chord1, chord2) {
-  return(chord1 * 37 + chord2 + 1)
+get.transition.symbol <- function(chord1, chord2) {
+  return(chord1 * 37 + chord2)
 }
 
 get.chords.in.transition <- function(transition) {
   chord1 <- floor(transition / 37)
   chord2 <- transition %% 37
   return(c(chord1, chord2))
+}
+
+parse.chord <- function(unparsed) {
+  # only interested in minor, major, dim chords and [N]o chord
+  if(unparsed == 'N')
+    return('N')
+  root <- gsub('[:/].*$', '', unparsed)
+  if(length(grep(':min', unparsed)))
+    return(paste(root, 'min', sep = ':'))
+  if(length(grep(':h?dim', unparsed)))
+    return(paste(root, 'dim', sep = ':'))
+  return(paste(root, 'maj', sep = ':'))
 }
 
 ## Returns an integer from a chord name.
@@ -203,10 +215,10 @@ get.chord.id <- function(name) {
       'N')
   chord.ids <-
     c(rep(c(0, 1, 1, 2, 3, 3, 4, 5, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 0, 11), 3) +
-      rep(0:3 * 12, each = 21), 4 * 12)
+      rep(0:2 * 12, each = 21), 3 * 12 + 1)
 
   names(chord.ids) <- chord.names
-  return(chord.ids[name])
+  return(unname(chord.ids[name]))
 }
 
 krumhansl.key.profile.correlations <-

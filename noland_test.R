@@ -66,10 +66,10 @@ test.get.diatonic.index <- function() {
   checkEquals(7, get.diatonic.index(27, 13))
 }
 
-# a few spotchecks
+                                        # a few spotchecks
 test.get.emission.probs <- function() {
   probs <<- get.emission.probs()
-  f <- get.transition.index
+  f <- function(x, y) { get.transition.symbol(x, y) + 1 }
 
   checkEquals(8.66, probs[1, f( 0,  0)])
   checkEquals(5.51, probs[8, f( 2,  0)])
@@ -111,4 +111,52 @@ test.get.trans.probs <- function() {
   checkEquals(-0.402, probs[13,  3])
   checkEquals(-0.402, probs[20, 10])
   checkEquals(-0.160, probs[20, 22])
+}
+
+test.parse.chord <- function() {
+  p <- parse.chord
+  checkEquals('A:maj', p('A'))
+  checkEquals('A:maj', p('A/3'))
+  checkEquals('A#:maj', p('A#/3'))
+  checkEquals('A:maj', p('A:sus4(2)'))
+  checkEquals('A:maj', p('A:maj7/5'))
+  checkEquals('A:maj', p('A:7'))
+  checkEquals('N', p('N'))
+  checkEquals('F#:maj', p('F#'))
+  checkEquals('A:maj', p('A:aug')) # hmm
+  checkEquals('A:min', p('A:min'))
+  checkEquals('A:min', p('A:min/4'))
+  checkEquals('C#:dim', p('C#:dim/b3'))
+  checkEquals('Eb:min', p('Eb:min'))
+  checkEquals('C#:dim', p('C#:hdim/b3'))
+  checkEquals('G:maj', p('G:(1, b3, 4)'))
+  checkEquals('C:maj', p('C:9(*3)'))
+  checkEquals('C:maj', p('C:(1,5)'))
+}
+
+test.get.chord.id <- function() {
+  p <- get.chord.id
+  checkEquals(0, p('C:maj'))
+  checkEquals(12, p('C:min'))
+  checkEquals(24, p('C:dim'))
+  checkEquals(25, p('C#:dim'))
+  checkEquals(3, p('Eb:maj'))
+  checkEquals(9, p('A:maj'))
+  checkEquals(10, p('Bb:maj'))
+  checkEquals(10, p('A#:maj'))
+  checkEquals(c(10, 2), p(c('A#:maj', 'D:maj')))
+  checkEquals(37, p('N'))
+}
+
+test.get.transitions <- function() {
+  s <- get.transition.symbol
+  checkEquals(c(s(1, 2), s(2, 29), s(29, 4), s(4, 37)), get.transitions(c(1, 2, 29, 4, 37)))
+}
+
+run.noland.tests <- function() {
+  source('noland_test.R')
+  test.suite <- defineTestSuite("noland",
+                                dirs = file.path("."),
+                                testFileRegexp = '^noland_test.R$')
+  runTestSuite(test.suite)
 }
