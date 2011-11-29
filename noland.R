@@ -40,7 +40,7 @@ get.state.names <- function() {
 ## 1:12 == major chords, 13:24 == minor chords, 25:36 == dim chords, 37 = no chord
 ## indexed from 0
 get.symbol.names <- function() {
-  return(0:36)
+  return(0:(37 ^ 2 - 1))
 }
 
 get.start.probs <- function() {
@@ -51,6 +51,13 @@ get.normalised.trans.probs <- function() {
   probs <- get.trans.probs() + 1
   # normalise
   probs <- t(t(probs) / colSums(probs))
+  return(probs)
+}
+
+get.normalised.emission.probs <- function() {
+  probs <- get.emission.probs()
+  # normalise
+  probs <- probs / rowSums(probs)
   return(probs)
 }
 
@@ -79,7 +86,7 @@ get.trans.probs <- function() {
 get.emission.probs <- function() {
   # 37 chords, maj min dim + no chord
   ntrans <- 37 ^ 2
-  probs <- matrix(0, nrow = ntrans, ncol = 24)
+  probs <- matrix(0, nrow = 24, ncol = ntrans)
 
   for(key in 0:23) {
     for(transition in 0:(ntrans - 1)) {
@@ -112,7 +119,7 @@ get.emission.probs <- function() {
         prob <- krumhansl.chord.transition.ratings[chord1index, chord2index]        
       }
 
-      probs[transition + 1, key + 1] <- prob
+      probs[key + 1, transition + 1] <- prob
     }
   }
   return(probs)
