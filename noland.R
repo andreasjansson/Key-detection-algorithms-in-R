@@ -20,33 +20,71 @@
 ## two consecutive chords as HMM observations, almost like in a second
 ## order Markov model. And obviously the use of Krumhansl's perceptual
 ## tests.
+## 
+## In the literature Nolan, et al., use 48 (+1) chords for the observation
+## symbols, the last 12 being augumented chords. However, in Krumhansl's
+## perceptual tests, there is no mention of augumented chords. Because of
+## this I reduced the number of chords to 36 (+1), major, minor, diminished
+## and no chord.
 
-
-# TODO: write comment about not figuring out where to put aug chords
 
 library(HMM)
 library(magic)
+
+## "Main method"
+evaluate.nolan <- function(filename, do.plot = TRUE) {
+  hmm <- get.hmm()
+  chords <- read.chord.file(filename)
+  symbols <- get.symbols(chords)
+  times <- read.times(filename)
+  # every observation is a transition between two chords,
+  # so there is one more timestamp than symbol
+  times <- times[1:(length(times) - 1)]
+  keys <- viterbi(hmm, symbols)
+
+  result <- data.frame(Time = times,
+                       # convert factor to numeric
+                       Key = as.numeric(as.character(keys)))
+
+  if(do.plot) {
+    plot.keys(result)
+  }
+  
+  return(result)
+}
+
+plot.keys <- function(keys) {
+  plot(keys, type="s", yaxt="n")
+  axis(2, at=0:23, get.actual.state.names())
+}
 
 get.hmm <- function() {
   return(initHMM(get.state.names(), get.symbol.names(), get.start.probs(),
                  get.normalised.trans.probs(), get.normalised.emission.probs()))
 }
 
-get.transitions <- function(chords) {
+get.symbols <- function(chords) {
   chords.table <- cbind(chords[1:(length(chords) - 1)], chords[2:length(chords)])
   transitions <- apply(chords.table, 1, function(x) { get.transition.symbol(x[1], x[2]) })
-  return(transitions)
+  return(as.character(transitions))
 }
 
 ## indexed from 0
 get.state.names <- function() {
-  return(0:23)
+  return(as.character(0:23))
 }
 
-## 1:12 == major chords, 13:24 == minor chords, 25:36 == dim chords, 37 = no chord
+get.actual.state.names <- function() {
+  c('C', 'C#', 'D', 'D#', 'E', 'F',
+    'F#', 'G', 'G#', 'A', 'A#', 'B',
+    'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm',
+    'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm')
+}
+
+## 0:11 == major chords, 12:23 == minor chords, 24:35 == dim chords, 36 = no chord
 ## indexed from 0
 get.symbol.names <- function() {
-  return(0:(37 ^ 2 - 1))
+  return(as.character(0:(37 ^ 2 - 1)))
 }
 
 get.start.probs <- function() {
@@ -71,8 +109,6 @@ get.normalised.emission.probs <- function() {
 ## correlations from the major keys and the last 12 from minor keys.
 get.trans.probs <- function() {
 
-  # TODO UPNEXT: make test pass
-
   cors <- krumhansl.key.profile.correlations
   probs <- matrix(0, 24, 24)
   for(i in 1:24) {
@@ -89,6 +125,8 @@ get.trans.probs <- function() {
   return(probs)
 }
 
+## Return a matrix [X,e] of probabilities of being in key X while observing
+## chord transition e.
 get.emission.probs <- function() {
   # 37 chords, maj min dim + no chord
   ntrans <- 37 ^ 2
@@ -170,14 +208,20 @@ get.diatonic.index <- function(chord, key) {
   return(integer(0))
 }
 
-## Read a file in Chris Harte's format.
+## Read a .lab file in Chris Harte's format.
 ## Returns a vector of of chord ids.
-# TODO: fix this to match : syntax in get.chord.id
 read.chord.file <- function(filename) {
   data <- read.table(filename, sep = ' ', comment.char = '')
   chords <- data[,3]
   chords <- unlist(lapply(chords, parse.chord))
   return(get.chord.id(chords))
+}
+
+## Read times from a .lab file in Chris Harte's format.
+read.times <- function(filename) {
+  data <- read.table(filename, sep = ' ', comment.char = '')
+  start.times <- data[,1]
+  return(start.times)
 }
 
 get.transition.symbol <- function(chord1, chord2) {
@@ -215,7 +259,7 @@ get.chord.id <- function(name) {
       'N')
   chord.ids <-
     c(rep(c(0, 1, 1, 2, 3, 3, 4, 5, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 0, 11), 3) +
-      rep(0:2 * 12, each = 21), 3 * 12 + 1)
+      rep(0:2 * 12, each = 21), 3 * 12)
 
   names(chord.ids) <- chord.names
   return(unname(chord.ids[name]))

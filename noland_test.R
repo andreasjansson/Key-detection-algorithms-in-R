@@ -145,12 +145,12 @@ test.get.chord.id <- function() {
   checkEquals(10, p('Bb:maj'))
   checkEquals(10, p('A#:maj'))
   checkEquals(c(10, 2), p(c('A#:maj', 'D:maj')))
-  checkEquals(37, p('N'))
+  checkEquals(36, p('N'))
 }
 
 test.get.transitions <- function() {
   s <- get.transition.symbol
-  checkEquals(c(s(1, 2), s(2, 29), s(29, 4), s(4, 37)), get.transitions(c(1, 2, 29, 4, 37)))
+  checkEquals(c(s(1, 2), s(2, 29), s(29, 4), s(4, 36)), get.transitions(c(1, 2, 29, 4, 36)))
 }
 
 run.noland.tests <- function() {
