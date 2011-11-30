@@ -16,16 +16,22 @@
 
 
 ## Based on Noland & Sandler: Key Estimation Using a Hidden Markov Model
+## (http://ismir2006.ismir.net/PAPERS/ISMIR0691_Paper.pdf).
+## 
 ## The thing that sets this method apart is the use of transitions between
 ## two consecutive chords as HMM observations, almost like in a second
 ## order Markov model. And obviously the use of Krumhansl's perceptual
 ## tests.
-## 
+##
+## NOTES:
+##
 ## In the literature Nolan, et al., use 48 (+1) chords for the observation
 ## symbols, the last 12 being augumented chords. However, in Krumhansl's
 ## perceptual tests, there is no mention of augumented chords. Because of
 ## this I reduced the number of chords to 36 (+1), major, minor, diminished
 ## and no chord.
+##
+## My implementation doesn't use E-M training at all.
 
 
 library(HMM)
@@ -94,7 +100,7 @@ get.start.probs <- function() {
 get.normalised.trans.probs <- function() {
   probs <- get.trans.probs() + 1
   # normalise
-  probs <- t(t(probs) / colSums(probs))
+  probs <- probs / rowSums(probs)
   return(probs)
 }
 
@@ -114,11 +120,11 @@ get.trans.probs <- function() {
   for(i in 1:24) {
 
     if(i <= 12) {
-      probs[,i] <- c(shift(cors[1:12, 1], i - 1),
+      probs[i,] <- c(shift(cors[1:12, 1], i - 1),
                      shift(cors[13:24, 1], i - 1))
     }
     else {
-      probs[,i] <- c(shift(cors[1:12, 2], i - 13),
+      probs[i,] <- c(shift(cors[1:12, 2], i - 13),
                      shift(cors[13:24, 2], i - 13))
     }
   }
