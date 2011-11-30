@@ -38,6 +38,9 @@ library(HMM)
 library(magic)
 
 ## "Main method"
+## Takes as input a filename pointing to a .lab file.
+## Here are Chris Harte's Beatles annotations:
+## http://isophonics.net/content/reference-annotations-beatles
 evaluate.nolan <- function(filename, do.plot = TRUE) {
   hmm <- get.hmm()
   chords <- read.chord.file(filename)
