@@ -25,7 +25,7 @@
 ##
 ## NOTES:
 ##
-## In the literature Nolan, et al., use 48 (+1) chords for the observation
+## In the literature Noland, et al., use 48 (+1) chords for the observation
 ## symbols, the last 12 being augumented chords. However, in Krumhansl's
 ## perceptual tests, there is no mention of augumented chords. Because of
 ## this I reduced the number of chords to 36 (+1), major, minor, diminished
@@ -38,6 +38,9 @@ library(HMM)
 library(magic)
 
 ## "Main method"
+## Takes as input a filename pointing to a .lab file.
+## Here are Chris Harte's Beatles annotations:
+## http://isophonics.net/content/reference-annotations-beatles
 evaluate.nolan <- function(filename, do.plot = TRUE) {
   hmm <- get.hmm()
   chords <- read.chord.file(filename)
