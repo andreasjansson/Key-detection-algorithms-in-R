@@ -17,6 +17,8 @@
 
 ## Very basic, untuned, chromagram extraction from mp3
 
+library(tuneR)
+library(signal)
 
 ## Return a matrix where the rows are frames and the columns
 ## represent bins in a 12 dimensional chroma vector
@@ -25,7 +27,7 @@ chromagram.from.mp3 <- function(filename) {
   ws <- 2048
   time <- 30
   
-  a1 <- readMP3("06\ Pour\ le\ piano_\ Sarabande.mp3")
+  a1 <- readMP3(filename)
                                         #a1 <- readMP3("c9.mp3")
   print("done reading mp3")
 
