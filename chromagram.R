@@ -24,58 +24,131 @@ library(signal)
 ## represent bins in a 12 dimensional chroma vector
 chromagram.from.mp3 <- function(filename) {
   fs <- 11025
-  ws <- 2048
-  time <- 30
+  ws <- 8192
+  time <- 300
+  bins <- 12 * 5 # must be an odd multiple of 12
   
   a1 <- readMP3(filename)
-                                        #a1 <- readMP3("c9.mp3")
   print("done reading mp3")
-
-  cfs <- a1@samp.rate
-  if(length(a1@left) > cfs * time)
-    a1 <- extractWave(a1, to=cfs*time, interact=FALSE)
-  a1 <- mono(a1, "left")
-  a1 <- normalize(a1, "8")
-  a1 <- downsample(a1, fs)
+  a1 <- prepare.audio(a1, fs, ws, time)
   print("done downsampling")
-
-  s1 <- specgram(a1@left - 127, ws, fs)
+  s <- Mod(specgram(a1@left - 127, ws, fs)$S)
+  s <- filter.specgram(s, ws, fs)
   print("done specgram")
 
-  s <- Mod(s1$S)
+  m <- spec2bins(s, fs, bins, ws)
+  return(m)
+}
 
-  # remove quiet partials
-  s[s < quantile(s, .5)] <- 0
+tune.bins <- function(m) {
+  bins <- nrow(m) / 12
+  centre <- bins.centre(m)
+  m <- ashift(m, c(ceiling(bins / 2) - centre, 0))
+  m <- summarise.bins(m)
+}
 
-  # linear low pass filter
-  s <- s / ((1:nrow(s)) / 50)
+summarise.bins <- function(m) {
+  bins <- nrow(m) / 12
+  group <- rep(1:12, each = bins)
+  m <- rowsum(m, group)
+}
 
-  m <- matrix(0, nrow=12, ncol=ncol(s))
+bins.centre <- function(m) {
+  bins <- nrow(m)
+  b <- rowSums(m)
+  sums <- unlist(lapply(1:(bins / 12), function(x) {
+    sum(b[0:11 * (bins / 12) + x])
+  }))
+  centre <- which(sums == max(sums))
+  return(centre)
+}
+
+spec2bins <- function(s, fs, bins, ws) {
+  m <- matrix(0, nrow=bins, ncol=ncol(s))
   n <- nrow(s)
+  min.j <- floor(100 * (ws / 2) / fs)
+  max.j <- floor(2000 * (ws / 2) / fs)
 
-  # TODO: adaptive tuning!
-  ps <- round((log2((1:n * fs / n) / 440) * 12 + 10)) %% 12
+  # TODO: UPNEXT: get this right, test with actual audio data
+  ps <- round((log2((1:n * fs / n) / 440) * bins + (10 * bins / 12))) %% bins
 
   for(i in 1:ncol(s)) {
     if(i %% 100 == 0)
       print(sprintf("%d / %d", i, ncol(s)))
     
-    for(j in 3:(n/2)) { # only 0-5000hz
+    for(j in min.j:max.j) {
       p <- ps[j - 1]
       if(p == 0)
-        p <- 12
+        p <- bins
       m[p, i] <- m[p, i] + s[j, i]
     }
   }
 
   # normalise
   m <- m / max(m)
-
   return(m)
+}
+
+prepare.audio <- function(a, fs, ws, time) {
+  cfs <- a@samp.rate
+  if(length(a@left) > cfs * time)
+    a <- extractWave(a, to=cfs*time, interact=FALSE)
+  a <- mono(a, "both")
+  a <- normalize(a, "8")
+  a@bit <- 8
+  a <- downsample(a, fs)
+  return(a)
+}
+
+filter.specgram <- function(s, ws, fs) {
+  min.j <- floor(100 * (ws / 2) / fs)
+  max.j <- floor(2000 * (ws / 2) / fs)
+  
+  # remove quiet partials
+  s[s < quantile(s, .94)] <- 0
+
+  # linear low pass filter
+  # s <- s / ((1:nrow(s)) / 50)
+
+  s[1 : (min.j - 1),] <- 0
+  s[(max.j + 1) : nrow(s),] <- 0
+
+  return(s)
+}
+
+reassemble.specgram <- function(spec, window.size = 8192, fs = 11025) {
+  a <- integer(window.size * ncol(spec))
+  real.ws <- window.size
+  window.size <- window.size / 2
+  for(x in 1:(ncol(spec) - 1)) {
+    print(x)
+    for(y in 1:(window.size / 2 - 1)) {
+
+      if(Mod(spec[y, x]) > 0) {
+        frames <- (window.size * (x - 1) + 1):(window.size * x)
+
+        frequency <- y
+        wave <- cos(1:real.ws * frequency * 2 * pi / real.ws)[1:length(frames)]
+
+        a[frames] <- a[frames] + wave
+      }
+    }
+  }
+
+  w <- Wave(a, bit = 8, samp.rate = fs)
+  w <- normalize(w, "8")
+  return(w)
 }
 
 plot.chromagram <- function(chromagram) {
   image(t(chromagram), xaxt="n", yaxt="n")
   axis(2, at=0:11/11, c("c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"), tick=FALSE)
 #  axis(1, at=0:(ncol(m) - 1) / ncol(m), round(s1$t, 1), tick=FALSE)
+}
+
+plot.bins <- function(m) {
+  bins <- nrow(m)
+  rc <- rowSums(m)
+  names(rc)[(1:12) * (bins / 12) - 1] <- c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b')
+  barplot(rc, col=c("red","green","blue", "yellow", "purple", "orange", "pink")[1:(bins / 12)])
 }
