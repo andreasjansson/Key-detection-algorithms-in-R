@@ -19,7 +19,6 @@ make.discrete.markov.model <- function(filename = NULL,
     value <- discretise(chroma)
     if(i > order) {
       key <- get.key(prev, values.count)
-      print(key)
       g.keys <<- c(g.keys, key)
       model[key, value] <- model[key, value] + 1
     }
@@ -28,6 +27,7 @@ make.discrete.markov.model <- function(filename = NULL,
   }
 
   model <- model / rowSums(model)
+  model[is.nan(model)] <- 0
   return(model)
 }
 
@@ -36,11 +36,11 @@ get.key <- function(values, values.count) {
   sum(values * values.count ^ ((length(values) - 1):0)) + 1
 }
 
-discretise.template.flat <- function() {
+discretise.template.temperlay.major <- function() {
   return(discretise.template.pitch.class(c(5, 2, 3.5, 2, 4.5, 4, 2, 4.5, 2, 3.5, 1.5, 4) / 5))
 }
 
-discretise.template.temperlay.major <- function() {
+discretise.template.flat <- function() {
   return(discretise.template.pitch.class(c(1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1)))
 }
 
@@ -55,8 +55,21 @@ discretise.template.pitch.class <- function(template) {
   for(i in 1:pcl) {
     template.matrix[,i] <- shift(template.matrix[,i], (i - 1))
   }
+
+  dimnames(template.matrix) <- markov.key.dimnames
+  
   return(function(chroma) {
+    names(chroma) <- markov.key.dimnames[[1]]
     sums <- colSums(chroma * template.matrix)
+
+    three.max <- sums[sums > rev(sort(sums))[4]]
+    three.max.names = unlist(lapply(1:3, function(i) {
+      w <- which(three.max[i] == sums)
+      return(w[sample(length(w), 1)])
+    }))
+    names(three.max) <- markov.key.dimnames[[1]][three.max.names]
+    print(rev(sort(three.max)))
+
     max.sum <- which(sums == max(sums))
     g.pitch.classes <<- c(g.pitch.classes, list(max.sum))
     if(length(max.sum) > 1)

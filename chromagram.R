@@ -35,8 +35,9 @@ chromagram.from.mp3 <- function(filename) {
   s <- Mod(specgram(a1@left - 127, ws, fs)$S)
   s <- filter.specgram(s, ws, fs)
   print("done specgram")
-
   m <- spec2bins(s, fs, bins, ws)
+  m <- tune.bins(m)
+  print("done binning")
   return(m)
 }
 
@@ -70,14 +71,15 @@ spec2bins <- function(s, fs, bins, ws) {
   max.j <- floor(2000 * (ws / 2) / fs)
 
   # TODO: UPNEXT: get this right, test with actual audio data
-  ps <- round((log2((1:n * fs / n) / 440) * bins + (10 * bins / 12))) %% bins
+  c0 <- 16.3516
+  ps <- ceiling((log2((1:n * fs / n) / c0) * bins)) %% bins
 
   for(i in 1:ncol(s)) {
     if(i %% 100 == 0)
       print(sprintf("%d / %d", i, ncol(s)))
     
     for(j in min.j:max.j) {
-      p <- ps[j - 1]
+      p <- ps[j]
       if(p == 0)
         p <- bins
       m[p, i] <- m[p, i] + s[j, i]
@@ -93,7 +95,8 @@ prepare.audio <- function(a, fs, ws, time) {
   cfs <- a@samp.rate
   if(length(a@left) > cfs * time)
     a <- extractWave(a, to=cfs*time, interact=FALSE)
-  a <- mono(a, "both")
+  if(a@stereo)
+    a <- mono(a, "both")
   a <- normalize(a, "8")
   a@bit <- 8
   a <- downsample(a, fs)
@@ -103,7 +106,7 @@ prepare.audio <- function(a, fs, ws, time) {
 filter.specgram <- function(s, ws, fs) {
   min.j <- floor(100 * (ws / 2) / fs)
   max.j <- floor(2000 * (ws / 2) / fs)
-  
+
   # remove quiet partials
   s[s < quantile(s, .94)] <- 0
 
@@ -149,6 +152,6 @@ plot.chromagram <- function(chromagram) {
 plot.bins <- function(m) {
   bins <- nrow(m)
   rc <- rowSums(m)
-  names(rc)[(1:12) * (bins / 12) - 1] <- c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b')
-  barplot(rc, col=c("red","green","blue", "yellow", "purple", "orange", "pink")[1:(bins / 12)])
+  names(rc)[(1:12) * (bins / 12)] <- c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b')
+  barplot(rc, col=c("red","green","blue", "yellow", "purple", "orange", "pink", colours()[sample(length(colours()), length(colours()))])[1:(bins / 12)])
 }
