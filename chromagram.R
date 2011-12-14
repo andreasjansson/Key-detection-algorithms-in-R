@@ -36,29 +36,35 @@ chromagram.from.mp3 <- function(filename) {
   s <- filter.specgram(s, ws, fs)
   print("done specgram")
   m <- spec2bins(s, fs, bins, ws)
-  m <- tune.bins(m)
+#  m <- tune.bins(m)
   print("done binning")
   return(m)
 }
 
 tune.bins <- function(m) {
   bins <- nrow(m) / 12
+
+  # shift bins so that 439hz is still a
+  m <- ashift(m, c(ceil(bins / 2), 0))
+  
   centre <- bins.centre(m)
   m <- ashift(m, c(ceiling(bins / 2) - centre, 0))
   m <- summarise.bins(m)
+  return(m)
 }
 
 summarise.bins <- function(m) {
   bins <- nrow(m) / 12
   group <- rep(1:12, each = bins)
   m <- rowsum(m, group)
+  return(m)
 }
 
 bins.centre <- function(m) {
-  bins <- nrow(m)
+  bins <- nrow(m) / 12
   b <- rowSums(m)
-  sums <- unlist(lapply(1:(bins / 12), function(x) {
-    sum(b[0:11 * (bins / 12) + x])
+  sums <- unlist(lapply(1:bins, function(x) {
+    sum(b[(0:11 * bins + x)])
   }))
   centre <- which(sums == max(sums))
   return(centre)
