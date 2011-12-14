@@ -36,7 +36,7 @@ chromagram.from.mp3 <- function(filename) {
   s <- filter.specgram(s, ws, fs)
   print("done specgram")
   m <- spec2bins(s, fs, bins, ws)
-#  m <- tune.bins(m)
+  m <- tune.bins(m)
   print("done binning")
   return(m)
 }
@@ -45,7 +45,7 @@ tune.bins <- function(m) {
   bins <- nrow(m) / 12
 
   # shift bins so that 439hz is still a
-  m <- ashift(m, c(ceil(bins / 2), 0))
+  m <- ashift(m, c(ceiling(bins / 2), 0))
   
   centre <- bins.centre(m)
   m <- ashift(m, c(ceiling(bins / 2) - centre, 0))
@@ -117,7 +117,7 @@ filter.specgram <- function(s, ws, fs) {
   s[s < quantile(s, .94)] <- 0
 
   # linear low pass filter
-  # s <- s / ((1:nrow(s)) / 50)
+  s <- s / ((1:nrow(s)) / 50)
 
   s[1 : (min.j - 1),] <- 0
   s[(max.j + 1) : nrow(s),] <- 0
