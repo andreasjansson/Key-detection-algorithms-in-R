@@ -1,6 +1,56 @@
 source("chromagram.R")
 library(magic)
 
+get.best.estimates <- function(chromagram, estimates.count = 3) {
+  estimates <- c()
+  estimator <- get.local.estimates(estimates.count)
+  for(i in 1:ncol(chromagram)) {
+    chroma <- chromagram[,i]
+    local.estimates <- estimator(chroma)
+    if(!all(is.na(local.estimates)))
+      estimates <- c(estimates, list(local.estimates))
+  }
+  return(estimates)
+}
+
+get.local.estimates <- function(count) {
+  major <- c(1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0)
+  minor <- c(1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0)
+  diminished <- c(1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0)
+  chord.names <- c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b',
+                   'c-', 'c#-', 'd-', 'd#-', 'e-', 'f-', 'f#-', 'g-', 'g#-', 'a-', 'a#-', 'b-',
+                   'c/', 'c#/', 'd/', 'd#/', 'e/', 'f/', 'f#/', 'g/', 'g#/', 'a/', 'a#/', 'b/')
+  cutoff <- 1.5
+
+  templates <- list(major, minor, diminished)
+  template.matrix <- matrix(nrow = 12, ncol = 0)
+
+  for(template in templates)
+    template.matrix <- cbind(template.matrix, matrix(rep(template, 12), nrow = 12))
+
+  for(i in 1:(12 * length(templates))) {
+    template.matrix[,i] <- shift(template.matrix[,i], (i - 1))
+  }
+
+  return(function(chroma) {
+    sums <- colSums(chroma * template.matrix)
+
+    best <- sums[sums > rev(sort(sums))[count + 1]]
+    names.indices <- unlist(lapply(1:count, function(i) {
+      w <- which(best[i] == sums)
+      return(w[sample(length(w), 1)])
+    }))
+    names(best) <- chord.names[names.indices]
+    best <- rev(sort(best))
+
+    if(!is.na(best[1]) && best[1] > cutoff)
+      return(best)
+
+    return(NA)
+  })
+}
+
+
 make.discrete.markov.model <- function(filename = NULL,
                                        discretise = discretise.template.temperlay(),
                                        order = 1,
@@ -84,7 +134,7 @@ discretise.template.pitch.class <- function(templates, class.names) {
     }))
     names(three.max) <- class.names[three.max.names]
     three.max <- rev(sort(three.max))
-    if(three.max[1] > 1.5)
+    if(!is.na(three.max[1]) && three.max[1] > 1.5)
       print(three.max)
 
     max.sum <- which(sums == max(sums))
