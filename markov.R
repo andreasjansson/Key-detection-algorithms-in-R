@@ -1,9 +1,9 @@
 source("chromagram.R")
 library(magic)
 
-get.best.estimates <- function(chromagram, estimates.count = 3) {
+get.best.estimates <- function(chromagram, estimates.per.frame = 3) {
   estimates <- c()
-  estimator <- get.local.estimates(estimates.count)
+  estimator <- get.local.estimates(estimates.per.frame)
   for(i in 1:ncol(chromagram)) {
     chroma <- chromagram[,i]
     local.estimates <- estimator(chroma)
@@ -17,9 +17,7 @@ get.local.estimates <- function(count) {
   major <- c(1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0)
   minor <- c(1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0)
   diminished <- c(1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0)
-  chord.names <- c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b',
-                   'c-', 'c#-', 'd-', 'd#-', 'e-', 'f-', 'f#-', 'g-', 'g#-', 'a-', 'a#-', 'b-',
-                   'c/', 'c#/', 'd/', 'd#/', 'e/', 'f/', 'f#/', 'g/', 'g#/', 'a/', 'a#/', 'b/')
+  
   cutoff <- 1.5
 
   templates <- list(major, minor, diminished)
@@ -36,20 +34,75 @@ get.local.estimates <- function(count) {
     sums <- colSums(chroma * template.matrix)
 
     best <- sums[sums > rev(sort(sums))[count + 1]]
-    names.indices <- unlist(lapply(1:count, function(i) {
+    chords <- unlist(lapply(1:count, function(i) {
       w <- which(best[i] == sums)
       return(w[sample(length(w), 1)])
     }))
-    names(best) <- chord.names[names.indices]
     best <- rev(sort(best))
 
     if(!is.na(best[1]) && best[1] > cutoff)
-      return(best)
+      return(chords)
 
     return(NA)
   })
 }
 
+# dynamic programming, as described by temperlay
+find.best.estimates.path <- function(estimates, estimates.per.frame = 3) {
+  best.prev.indices <- matrix(NA, nrow = length(estimates), ncol = estimates.per.frame)
+  costs <- matrix(NA, nrow = length(estimates), ncol = estimates.per.frame)
+  costs[1,] <- 0
+
+  for(row in 2:length(estimates)) {
+    current <- estimates[[row]]
+    prev <- estimates[[row - 1]]
+
+    min.cost <- Inf
+    min.i.prev <- NA
+    for(i.cur in 1:estimates.per.frame) {
+      for(i.prev in 1:estimates.per.frame) {
+        cost <- costs[row - 1, i.prev] + get.chord.transition.cost(prev[i.prev], current[i.cur])
+        if(!is.na(cost) && cost < min.cost) {
+          min.cost <- cost
+          min.i.prev <- i.prev
+        }
+      }
+      costs[row, i.cur] <- min.cost
+      best.prev.indices[row, i.cur] <- min.i.prev
+    }
+  }
+
+  best.path.indices <- trace.best.path.indices(best.prev.indices, costs)
+  best.path <- integer(length(estimates))
+  for(row in 1:length(estimates)) {
+    best.path[row] <- estimates[[row]][best.path.indices[row]]
+  }
+
+  return(best.path)
+}
+
+trace.best.path.indices <- function(best.prev.indices, costs) {
+  count <- nrow(best.prev.indices)
+  path <- integer(count)
+  lowest.values <- min(costs[nrow(costs),])
+  lowest <- which(costs[nrow(costs),] == lowest.values)[sample(length(lowest.values), 1)]
+  path[count] <- lowest
+
+  for(i in count:2) {
+    lowest <- best.prev.indices[i, lowest]
+    path[i - 1] <- lowest
+  }
+
+  return(path)
+}
+
+get.chord.transition.cost <- function(from, to) {
+
+  if(is.na(from) || is.na(to))
+    return(NA)
+
+  # TODO: UPNEXT: base this on circle of fifths, only to eliminate noise
+}
 
 make.discrete.markov.model <- function(filename = NULL,
                                        discretise = discretise.template.temperlay(),
@@ -172,3 +225,7 @@ markov.chord.dimnames <- list(c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#',
                                 'c/', 'c#/', 'd/', 'd#/', 'e/', 'f/', 'f#/', 'g/', 'g#/', 'a/', 'a#/', 'b/'))
                               
 
+
+chord.names <- c('c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b',
+                 'c-', 'c#-', 'd-', 'd#-', 'e-', 'f-', 'f#-', 'g-', 'g#-', 'a-', 'a#-', 'b-',
+                 'c/', 'c#/', 'd/', 'd#/', 'e/', 'f/', 'f#/', 'g/', 'g#/', 'a/', 'a#/', 'b/')
