@@ -19,6 +19,7 @@
 
 library(tuneR)
 library(signal)
+library(magic)
 
 ## Return a matrix where the rows are frames and the columns
 ## represent bins in a 12 dimensional chroma vector
@@ -76,7 +77,6 @@ spec2bins <- function(s, fs, bins, ws) {
   min.j <- floor(100 * (ws / 2) / fs)
   max.j <- floor(2000 * (ws / 2) / fs)
 
-  # TODO: UPNEXT: get this right, test with actual audio data
   c0 <- 16.3516
   ps <- ceiling((log2((1:n * fs / n) / c0) * bins)) %% bins
 
@@ -95,6 +95,11 @@ spec2bins <- function(s, fs, bins, ws) {
   # normalise
   m <- m / max(m)
   return(m)
+}
+
+freq2bin <- function(fq) {
+  c0 <- 16.3516
+  round((log2(fq / c0) * 12) %% 12)
 }
 
 prepare.audio <- function(a, fs, ws, time) {
